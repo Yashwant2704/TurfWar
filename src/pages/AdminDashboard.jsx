@@ -51,7 +51,7 @@ export default function AdminDashboard() {
     const winner = prompt("Who won? (Team A / Team B)");
     if (!winner) return;
     try {
-      await axios.put(url, { winner, score: 'Completed' }, { headers: { 'x-auth-token': token } });
+      await client.put(url, { winner, score: 'Completed' }, { headers: { 'x-auth-token': token } });
       fetchMatches();
       setSelectedMatch(null); 
     } catch (err) { alert("Error"); }
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
   const saveEdit = async () => {
     const url = `/matches/${selectedMatch._id}`;
     try {
-      await axios.put(url, editForm, { 
+      await client.put(url, editForm, { 
         headers: { 'x-auth-token': token } 
       });
       setIsEditing(false);
