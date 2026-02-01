@@ -75,7 +75,7 @@ export default function MoneyManager({ match, user, token, onUpdate }) {
     const url = `/matches/${match._id}/guest`;
     if (!guestForm.name) return alert("Name is required");
     try {
-        await axios.post(url, 
+        await client.post(url, 
             guestForm,
             { headers: { 'x-auth-token': token } }
         );

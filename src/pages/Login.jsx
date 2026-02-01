@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 import client from '../api/client';
+import { ButtonLoader } from '../components/Loader'; // IMPORT LOADER
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,7 +15,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setLoading(true); // START LOADING
     try {
       const url = `/auth/${isLogin ? 'login' : 'register'}`;
       const res = await client.post(url, formData);
@@ -26,12 +27,12 @@ export default function Login() {
         setIsLogin(true);
       }
     } catch (err) { alert(err.response?.data?.message || 'Error'); }
-    setLoading(false);
+    setLoading(false); // END LOADING
   };
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Hidden on Phone, Visible on Desktop */}
+      {/* Left Side */}
       <div className="hidden lg:flex w-1/2 bg-emerald-700 justify-center items-center relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=2067&auto=format&fit=crop')] bg-cover bg-center opacity-20 blur-sm"></div>
         <div className="relative z-10 text-center px-10">
@@ -47,14 +48,9 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right Side - Form Area */}
-      {/* UPDATED: Added background image for mobile only (lg:bg-none) */}
+      {/* Right Side */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=2067&auto=format&fit=crop')] bg-cover bg-center lg:bg-none lg:bg-gray-50 relative">
-        
-        {/* Dark overlay for mobile only to ensure text contrast if image is bright */}
         <div className="absolute inset-0 bg-emerald-900/40 lg:hidden"></div>
-
-        {/* UPDATED: Added relative z-10 so it sits above the overlay, and backdrop-blur for glass effect */}
         <div className="w-full max-w-md bg-white/95 backdrop-blur-sm lg:bg-white p-8 rounded-2xl shadow-xl border border-gray-100 relative z-10">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900">{isLogin ? 'Welcome Back' : 'Join the Club'}</h2>
@@ -80,7 +76,14 @@ export default function Login() {
             <input className="input-field" type="password" placeholder="••••••••" onChange={e => setFormData({...formData, password: e.target.value})} required />
             
             <button disabled={loading} className="btn-primary w-full flex justify-center items-center gap-2">
-              {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Get Started')}
+              {loading ? (
+                // BUTTON LOADER
+                <>
+                  <ButtonLoader /> Processing...
+                </>
+              ) : (
+                isLogin ? 'Sign In' : 'Get Started'
+              )}
             </button>
           </form>
 

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import MatchCard from '../components/MatchCard';
 import JoinModal from '../components/JoinModal';
+import { PageLoader } from '../components/Loader'; // IMPORT LOADER
 import { LogOut, User, Trophy, Search } from 'lucide-react';
 import client from '../api/client';
 
@@ -10,21 +11,28 @@ export default function PlayerDashboard() {
   const { user, logout } = useContext(AuthContext);
   const [matches, setMatches] = useState([]);
   const [joinId, setJoinId] = useState(null);
+  const [loading, setLoading] = useState(true); // ADD LOADING STATE
 
   useEffect(() => { fetchMatches(); }, []);
 
   const fetchMatches = async () => {
+    setLoading(true); // START LOADING
     try {
+      // Simulate a small delay so the user sees the cool animation (optional)
+      // await new Promise(r => setTimeout(r, 800)); 
       const res = await client.get('/matches');
       setMatches(res.data);
     } catch (err) { console.error(err); }
+    setLoading(false); // END LOADING
   };
 
+  // RENDER LOADER
+  if (loading) return <PageLoader />;
+
   return (
-    // UPDATED: Stronger Gradient (Emerald-200 start, fading to Slate-100)
     <div className="min-h-screen font-sans bg-[radial-gradient(at_top_right,_var(--tw-gradient-stops))] from-emerald-200/60 via-teal-50/20 to-slate-100">
       
-      {/* Navbar: Glassmorphism will catch the green tint behind it now */}
+      {/* Navbar */}
       <nav className="bg-white/70 backdrop-blur-lg border-b border-white/40 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -70,7 +78,7 @@ export default function PlayerDashboard() {
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Match Feed</h1>
             <p className="text-gray-600 font-medium mt-1">Find a game, join a squad, and dominate the turf.</p>
           </div>
-          {/* Search Bar - darker background to stand out against the new gradient */}
+          {/* Search Bar */}
           <div className="hidden md:flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 gap-2 text-gray-400 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
             <Search size={18} className="text-emerald-600"/>
             <span className="text-sm font-medium">Search turfs...</span>

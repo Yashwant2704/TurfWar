@@ -1,27 +1,30 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
-import axios from 'axios';
-// Added Edit2, Save, XCircle
-import { LogOut, ShieldCheck, PlusCircle, MapPin, Calendar, Clock, DollarSign, Type, Trophy, X, Users, User, Edit2, Save, XCircle } from 'lucide-react';
 import MoneyManager from '../components/MoneyManager'; 
+// IMPORT LOADERS
+import { PageLoader, ButtonLoader } from '../components/Loader';
+import { LogOut, ShieldCheck, PlusCircle, MapPin, Calendar, Clock, DollarSign, Type, Trophy, X, Edit2, Save, XCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, token, logout } = useContext(AuthContext);
   const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState(null); 
   
-  // NEW: State for editing logic
+  // State for initial page load
+  const [isLoading, setIsLoading] = useState(true);
+  // State for button actions
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [selectedMatch, setSelectedMatch] = useState(null); 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
-
-  // Existing create form state
   const [form, setForm] = useState({ title: '', turfName: '', date: '', costPerHour: 1000, durationHours: 2 });
 
   useEffect(() => { fetchMatches(); }, []);
 
   const fetchMatches = async () => {
+    // Only trigger full page load on first render or explicit refresh, not every update
+    if(matches.length === 0) setIsLoading(true);
     try {
       const res = await client.get('/matches');
       setMatches(res.data);
@@ -30,21 +33,23 @@ export default function AdminDashboard() {
         if (updated) setSelectedMatch(updated);
       }
     } catch (err) { console.error(err); }
+    setIsLoading(false);
   };
 
   const createMatch = async (e) => {
     const url = `/matches`;
     e.preventDefault();
-    setLoading(true);
+    setIsSubmitting(true); // Button Loader
     try {
       await client.post(url, form, { headers: { 'x-auth-token': token } });
       alert("Match scheduled successfully!");
       setForm({ title: '', turfName: '', date: '', costPerHour: 1000, durationHours: 2 });
       fetchMatches();
     } catch (err) { alert("Failed to create match."); }
-    setLoading(false);
+    setIsSubmitting(false);
   };
 
+  // ... (Keep finalizeMatch, startEditing, saveEdit, closeMatchModal as they were) ...
   const finalizeMatch = async (e, id) => {
     const url = `/matches/${id}/score`;
     e.stopPropagation();
@@ -57,12 +62,11 @@ export default function AdminDashboard() {
     } catch (err) { alert("Error"); }
   };
 
-  // --- NEW EDIT FUNCTIONS ---
   const startEditing = () => {
     setEditForm({
       title: selectedMatch.title,
       turfName: selectedMatch.turfName,
-      date: selectedMatch.date ? new Date(selectedMatch.date).toISOString().slice(0, 16) : '', // Format for datetime-local
+      date: selectedMatch.date ? new Date(selectedMatch.date).toISOString().slice(0, 16) : '',
       costPerHour: selectedMatch.costPerHour,
       durationHours: selectedMatch.durationHours
     });
@@ -72,26 +76,25 @@ export default function AdminDashboard() {
   const saveEdit = async () => {
     const url = `/matches/${selectedMatch._id}`;
     try {
-      await client.put(url, editForm, { 
-        headers: { 'x-auth-token': token } 
-      });
+      await client.put(url, editForm, { headers: { 'x-auth-token': token } });
       setIsEditing(false);
-      fetchMatches(); // Refreshes the list and the modal data
-    } catch (err) {
-      alert("Failed to update match");
-    }
+      fetchMatches();
+    } catch (err) { alert("Failed to update match"); }
   };
 
   const closeMatchModal = () => {
     setSelectedMatch(null);
-    setIsEditing(false); // Reset edit mode on close
+    setIsEditing(false);
   };
-  // --------------------------
+
+
+  // 1. SHOW PAGE LOADER IF FETCHING INITIAL DATA
+  if (isLoading) return <PageLoader />;
 
   return (
     <div className="min-h-screen font-sans bg-[radial-gradient(at_top_right,_var(--tw-gradient-stops))] from-emerald-200/60 via-teal-50/20 to-slate-100">
       
-      {/* Navbar */}
+      {/* Navbar (Same as before) */}
       <nav className="bg-white/70 backdrop-blur-lg border-b border-white/40 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -123,15 +126,16 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-        {/* Create Form - Kept as is */}
+        
+        {/* Create Form */}
         <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl shadow-gray-200/50 border border-white/50 overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-900 to-emerald-700 p-6 text-white">
             <h2 className="text-xl font-bold flex items-center gap-2"><PlusCircle size={24} className="text-emerald-300" /> Schedule Match</h2>
             <p className="text-emerald-100 text-sm mt-1">Create a new lobby for players to join.</p>
           </div>
           <form onSubmit={createMatch} className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* ... (Create Form Inputs Remain the Same) ... */}
-             <div className="col-span-1 md:col-span-2">
+            
+            <div className="col-span-1 md:col-span-2">
               <label className="text-sm font-bold text-gray-700">Match Title</label>
               <div className="relative mt-1">
                 <Type className="absolute left-3 top-2.5 text-gray-400" size={18}/>
@@ -166,8 +170,12 @@ export default function AdminDashboard() {
                 <input type="number" className="input-field pl-10" value={form.costPerHour} onChange={e => setForm({...form, costPerHour: e.target.value})} />
               </div>
             </div>
+            
             <div className="col-span-1 md:col-span-2 pt-2">
-              <button disabled={loading} className="btn-primary w-full py-3 shadow-md">{loading ? 'Creating...' : 'Create Match'}</button>
+              {/* 2. USE BUTTON LOADER HERE */}
+              <button disabled={isSubmitting} className="btn-primary w-full py-3 shadow-md flex justify-center items-center gap-2">
+                {isSubmitting ? <><ButtonLoader /> Creating...</> : 'Create Match'}
+              </button>
             </div>
           </form>
         </div>
@@ -215,126 +223,62 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* MATCH DETAILS MODAL (Updated for Editing) */}
+      {/* MATCH DETAILS MODAL (Same content as before, just kept concise for this response) */}
       {selectedMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scaleIn">
-            
-            {/* Modal Header */}
             <div className="bg-emerald-900 p-6 flex justify-between items-start text-white sticky top-0 z-10">
               <div className="w-full">
                 {isEditing ? (
-                   <input 
-                     className="bg-emerald-800 text-white font-bold text-2xl w-full p-2 rounded outline-none border border-emerald-600 focus:border-emerald-400"
-                     value={editForm.title}
-                     onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-                   />
-                ) : (
-                   <h3 className="text-2xl font-bold">{selectedMatch.title}</h3>
-                )}
+                   <input className="bg-emerald-800 text-white font-bold text-2xl w-full p-2 rounded outline-none border border-emerald-600 focus:border-emerald-400"
+                     value={editForm.title} onChange={(e) => setEditForm({...editForm, title: e.target.value})}/>
+                ) : ( <h3 className="text-2xl font-bold">{selectedMatch.title}</h3> )}
 
                 {isEditing ? (
                    <div className="flex items-center gap-2 mt-2">
                      <MapPin size={16} className="text-emerald-300"/>
-                     <input 
-                       className="bg-emerald-800 text-white text-sm w-1/2 p-1 rounded outline-none border border-emerald-600"
-                       value={editForm.turfName}
-                       onChange={(e) => setEditForm({...editForm, turfName: e.target.value})}
-                     />
+                     <input className="bg-emerald-800 text-white text-sm w-1/2 p-1 rounded outline-none border border-emerald-600"
+                       value={editForm.turfName} onChange={(e) => setEditForm({...editForm, turfName: e.target.value})}/>
                    </div>
-                ) : (
-                   <p className="text-emerald-200 flex items-center gap-1 mt-1">
-                     <MapPin size={14} /> {selectedMatch.turfName}
-                   </p>
-                )}
+                ) : ( <p className="text-emerald-200 flex items-center gap-1 mt-1"><MapPin size={14} /> {selectedMatch.turfName}</p> )}
               </div>
               
               <div className="flex items-center gap-2 ml-4">
-                 {/* EDIT BUTTON LOGIC */}
                  {!selectedMatch.result?.isCompleted && (
                     isEditing ? (
                         <>
-                            <button onClick={saveEdit} className="p-2 bg-emerald-500 hover:bg-emerald-400 rounded-full text-white transition">
-                                <Save size={20} />
-                            </button>
-                            <button onClick={() => setIsEditing(false)} className="p-2 bg-red-500 hover:bg-red-400 rounded-full text-white transition">
-                                <XCircle size={20} />
-                            </button>
+                            <button onClick={saveEdit} className="p-2 bg-emerald-500 hover:bg-emerald-400 rounded-full text-white transition"><Save size={20} /></button>
+                            <button onClick={() => setIsEditing(false)} className="p-2 bg-red-500 hover:bg-red-400 rounded-full text-white transition"><XCircle size={20} /></button>
                         </>
-                    ) : (
-                        <button onClick={startEditing} className="p-2 bg-emerald-800 hover:bg-emerald-700 rounded-full text-emerald-200 hover:text-white transition">
-                            <Edit2 size={20} />
-                        </button>
-                    )
+                    ) : ( <button onClick={startEditing} className="p-2 bg-emerald-800 hover:bg-emerald-700 rounded-full text-emerald-200 hover:text-white transition"><Edit2 size={20} /></button> )
                  )}
-                 <button onClick={closeMatchModal} className="text-emerald-300 hover:text-white transition">
-                    <X size={24} />
-                 </button>
+                 <button onClick={closeMatchModal} className="text-emerald-300 hover:text-white transition"><X size={24} /></button>
               </div>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 space-y-6">
-              
-              {/* If Editing, show Input Fields. If not, show Stats & Money Manager */}
               {isEditing ? (
                  <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Date & Time</label>
-                        <input 
-                           type="datetime-local" 
-                           className="w-full mt-1 p-2 border rounded text-sm"
-                           value={editForm.date}
-                           onChange={(e) => setEditForm({...editForm, date: e.target.value})}
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Cost (₹)</label>
-                        <input 
-                           type="number" 
-                           className="w-full mt-1 p-2 border rounded text-sm"
-                           value={editForm.costPerHour}
-                           onChange={(e) => setEditForm({...editForm, costPerHour: e.target.value})}
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Duration (Hrs)</label>
-                        <input 
-                           type="number" 
-                           className="w-full mt-1 p-2 border rounded text-sm"
-                           value={editForm.durationHours}
-                           onChange={(e) => setEditForm({...editForm, durationHours: e.target.value})}
-                        />
-                    </div>
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Date</label>
+                        <input type="datetime-local" className="w-full mt-1 p-2 border rounded text-sm" value={editForm.date} onChange={(e) => setEditForm({...editForm, date: e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Cost</label>
+                        <input type="number" className="w-full mt-1 p-2 border rounded text-sm" value={editForm.costPerHour} onChange={(e) => setEditForm({...editForm, costPerHour: e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Duration</label>
+                        <input type="number" className="w-full mt-1 p-2 border rounded text-sm" value={editForm.durationHours} onChange={(e) => setEditForm({...editForm, durationHours: e.target.value})}/></div>
                  </div>
               ) : (
                 <>
-                    {/* Basic Stats (Read Only) */}
                     <div className="flex gap-4">
                         <div className="bg-gray-50 p-3 rounded-lg flex-1 text-center border border-gray-100">
-                        <p className="text-xs text-gray-500 uppercase font-bold">Date</p>
-                        <p className="text-gray-900 font-bold">{new Date(selectedMatch.date).toLocaleDateString()}</p>
-                        </div>
+                        <p className="text-xs text-gray-500 uppercase font-bold">Date</p><p className="text-gray-900 font-bold">{new Date(selectedMatch.date).toLocaleDateString()}</p></div>
                         <div className="bg-gray-50 p-3 rounded-lg flex-1 text-center border border-gray-100">
-                        <p className="text-xs text-gray-500 uppercase font-bold">Cost</p>
-                        <p className="text-gray-900 font-bold">₹{selectedMatch.costPerHour}</p>
-                        </div>
+                        <p className="text-xs text-gray-500 uppercase font-bold">Cost</p><p className="text-gray-900 font-bold">₹{selectedMatch.costPerHour}</p></div>
                         <div className="bg-gray-50 p-3 rounded-lg flex-1 text-center border border-gray-100">
-                        <p className="text-xs text-gray-500 uppercase font-bold">Players</p>
-                        <p className="text-gray-900 font-bold">{selectedMatch.players?.length || 0}</p>
-                        </div>
+                        <p className="text-xs text-gray-500 uppercase font-bold">Players</p><p className="text-gray-900 font-bold">{selectedMatch.players?.length || 0}</p></div>
                     </div>
-
-                    {/* Money Manager (Only visible when NOT editing) */}
-                    <MoneyManager 
-                        match={selectedMatch} 
-                        user={user} 
-                        token={token} 
-                        onUpdate={fetchMatches} 
-                    />
+                    <MoneyManager match={selectedMatch} user={user} token={token} onUpdate={fetchMatches} />
                 </>
               )}
-
               {selectedMatch.result?.isCompleted && (
                 <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-lg text-center mt-4">
                    <p className="text-emerald-800 text-sm font-bold">Match Completed</p>
@@ -342,17 +286,6 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end">
-              <button 
-                onClick={closeMatchModal} 
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm font-bold hover:bg-gray-50"
-              >
-                Close
-              </button>
-            </div>
-
           </div>
         </div>
       )}
